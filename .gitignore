@@ -1,0 +1,7 @@
+# Ignore everything by default
+*
+
+# Allow .py and .md files
+!*.py
+!*.md
+!.gitignore
