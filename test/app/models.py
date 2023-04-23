@@ -1,4 +1,4 @@
-from mongoengine import Document,  fields
+from mongoengine import Document, fields
 from pydantic import BaseModel
 from typing import List
 
