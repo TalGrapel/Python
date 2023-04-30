@@ -17,11 +17,26 @@ userbl = UserBL()
 errorbl = ErrorBL()
 convertionsbl = ConvertionsBL()
 
+"""
+Description: Business logic class for authentication operations 
+"""
 class AuthBL:
     
+    """
+    Description: Get jwt token payload 
+    Params: access_token (str), key (str), algo (str)
+    Return value: payload (dict)
+    Notes: None
+    """
     async def get_payload(self, access_token, key, algo):
         return jwt.decode(access_token, key, algorithms=[algo])
     
+    """
+    Description: Get current user object 
+    Params: request (Request)
+    Return value: User
+    Notes: None
+    """
     async def get_current_user(self, request: Request):
         access_token = request.cookies.get(ACCESS_TOKEN_STR)
         if access_token is None:
@@ -41,10 +56,22 @@ class AuthBL:
             await errorbl.error_handling(401,"Invalid authentication!")
         return user
     
+    """
+    Description: Verify given password with user password 
+    Params: plain_password (str), user_password (str)
+    Return value: bool
+    Notes: None
+    """
     async def verify_password(self, plain_password, user_password):
         return bcrypt.checkpw(await convertionsbl.encode(plain_password, ENCODE_FORMAT),
                               await convertionsbl.encode(user_password, ENCODE_FORMAT))
-        
+    
+    """
+    Description: Create access token for logged in user 
+    Params: data (dict), expires_delta (timedelta)
+    Return value: Jwt token (str)
+    Notes: None
+    """    
     async def create_access_token(self, data, expires_delta):
         to_encode = data.copy()
         expire = datetime.utcnow() + expires_delta
@@ -52,17 +79,36 @@ class AuthBL:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
+    """
+    Description: Hash given password 
+    Params: password (str)
+    Return value: Hashed password (bytes)
+    Notes: None
+    """
     async def hash_password(self, password):
         byte_pwd = await convertionsbl.encode(password, ENCODE_FORMAT)
         salt = bcrypt.gensalt()
         hashed_pass = bcrypt.hashpw(byte_pwd, salt)
         return hashed_pass
     
+    """
+    Description: Registr new user to the system 
+    Params: username (str), email (str), password (str)
+    Return value: None
+    Notes: None
+    """
     async def register(self, username, email, password):
         hash_pass = await self.hash_password(password)
         user = userbl.create_user(username, email, hash_pass)
         await userbl.save(user)
-        
+    
+    """
+    Description: Set user's cookie 
+    Params: response (JSONResponse), key (str), value (str), httponly (bool),
+            expires(datetime), path (str)
+    Return value: None
+    Notes: None
+    """    
     async def set_response(self, response, key, value, httponly, expires, path):
         response.set_cookie(
             key=key,
@@ -71,10 +117,22 @@ class AuthBL:
             expires=expires,
             path=path
         )
-        
+    
+    """
+    Description: Get token expire time 
+    Params: time (datetime), timedelta (timedelta)
+    Return value: Expire time (datetime)
+    Notes: None
+    """    
     async def get_expire_time(self, time ,timedelta):
         return time + timedelta        
     
+    """
+    Description: Login to the system 
+    Params: username (str), password (str)
+    Return value: Response (JSONResponse)
+    Notes: None
+    """
     async def login(self, username, password):
         print(username)
         user = userbl.get_user_by_username(username)
