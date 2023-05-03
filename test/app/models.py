@@ -9,8 +9,8 @@ class User(Document):
     username = fields.StringField(required=True, unique=True)
     email = fields.EmailField(required=True, unique=True)
     password = fields.StringField(required=True)
-    receipts = fields.ListField(fields.ReferenceField('Receipt'))
-    favorites = fields.ListField(fields.ReferenceField('Receipt'))
+    recipes = fields.ListField(fields.ReferenceField('Recipe'))
+    favorites = fields.ListField(fields.ReferenceField('Recipe'))
     
     """
     Description: Convert User to dictionary 
@@ -22,14 +22,14 @@ class User(Document):
         return {
             'username':self.username,
             'email':self.email,
-            'receipts': [receipt.title for receipt in self.receipts],
-            'favorites': [receipt.title for receipt in self.favorites]
+            'receipts': [recipe.title for recipe in self.recipes],
+            'favorites': [recipe.title for recipe in self.favorites]
         }
 
 """
-Description: an ODM class for Receipt collection in database 
+Description: an ODM class for Recipe collection in database 
 """
-class Receipt(Document):
+class Recipe(Document):
     title = fields.StringField(required=True)
     description = fields.StringField(required=True)
     ingredients = fields.ListField(fields.StringField())
@@ -39,7 +39,7 @@ class Receipt(Document):
     estimated_time = fields.IntField(required=True)
     
     """
-    Description: Convert Receipt to dictionary 
+    Description: Convert Recipe to dictionary 
     Params: None
     Return value: Dictionary
     Notes: None
@@ -64,9 +64,9 @@ class CreateUserRequest(BaseModel):
     password: str
 
 """
-Description: Request json template for creating new Receipt 
+Description: Request json template for creating new Recipe 
 """        
-class CreateReceiptRequest(BaseModel):
+class CreateRecipeRequest(BaseModel):
     title: str
     description: str
     ingredients: List[str]
@@ -75,9 +75,9 @@ class CreateReceiptRequest(BaseModel):
     estimated_time: int
 
 """
-Description: Request json template for update Receipt 
+Description: Request json template for update Recipe 
 """        
-class UpdateReceiptRequest(BaseModel):
+class UpdateRecipeRequest(BaseModel):
     title: str = None
     description: str = None
     ingredients: List[str] = None

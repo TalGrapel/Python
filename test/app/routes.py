@@ -3,18 +3,18 @@ from fastapi.security import HTTPBasicCredentials
 from fastapi_mail import FastMail, MessageSchema
 from app import connection_config
 from app import fast_app
-from app.models import User, CreateUserRequest, UpdateUserRequest, CreateReceiptRequest, UpdateReceiptRequest, Receipt
+from app.models import User, CreateUserRequest, UpdateUserRequest, CreateRecipeRequest, UpdateRecipeRequest
 from app.models import ForgotPasswordRequest
 from business_logic.authentication_bl import AuthBL
 from business_logic.error_bl import ErrorBL
-from business_logic.receipts_bl import ReceiptBL
+from business_logic.recipes_bl import RecipeBL
 from business_logic.user_bl import UserBL
 from business_logic.convertions_bl import ConvertionsBL
 
 #Business logic objects init
 auth_bl = AuthBL()
 error_bl = ErrorBL()
-receipt_bl = ReceiptBL()
+recipe_bl = RecipeBL()
 user_bl = UserBL()
 convertions_bl = ConvertionsBL()
 
@@ -36,13 +36,13 @@ async def create_user(request: CreateUserRequest) -> dict:
 
     return {"user_id": str(user.id)}
 
-#Add receipt to current logged in user endpoint
-@fast_app.post("/receipts")
-async def create_receipt(
-    request: CreateReceiptRequest,
+#Add recipe to current logged in user endpoint
+@fast_app.post("/recipes")
+async def create_recipe(
+    request: CreateRecipeRequest,
     current_user: User = Depends(auth_bl.get_current_user)
 ):
-    receipt = receipt_bl.create_receipt(request.title,
+    receipt = recipe_bl.create_recipe(request.title,
                                         request.description,
                                         request.ingredients,
                                         request.instructions,
@@ -50,157 +50,157 @@ async def create_receipt(
                                         request.category,
                                         request.estimated_time)
     
-    await user_bl.add_receipt(current_user, receipt)
-    return {"receipt_title": str(receipt.title)}
+    await user_bl.add_recipe(current_user, receipt)
+    return {"recipe_title": str(receipt.title)}
 
-#Get receipt by id endpoint
-@fast_app.get("/receipts")
-async def get_receipt_by_id(receipt_id: str = Query(..., alias="receipt_id")):
+#Get recipe by id endpoint
+@fast_app.get("/recipes")
+async def get_receipt_by_id(recipe_id: str = Query(..., alias="recipe_id")):
     try:
-        receipt_id = convertions_bl.convert_objectid(receipt_id)
+        recipe_id = convertions_bl.convert_objectid(recipe_id)
     except:
         error_bl.error_handling(422, "Invalid ObjectID")
 
-    receipt = receipt_bl.get_receipt_by_id(id)
+    recipe = recipe_bl.get_recipe_by_id(id)
 
-    if not receipt:
-        error_bl.error_handling(401, "Receipt not found!")
+    if not recipe:
+        error_bl.error_handling(401, "Recipe not found!")
 
-    return receipt.to_dict()
+    return recipe.to_dict()
 
-#Get all current user's receipts endpoint 
-@fast_app.get("/user/receipts")
-async def get_receipts_of_user(current_user: User = Depends(auth_bl.get_current_user)):
-    return [receipt.to_dict() for receipt in current_user.receipts]
+#Get all current user's recipes endpoint 
+@fast_app.get("/user/recipes")
+async def get_recipes_of_user(current_user: User = Depends(auth_bl.get_current_user)):
+    return [recipe.to_dict() for recipe in current_user.recipes]
 
-#search receipts by title(partial title is acceptable) endpoint
-@fast_app.get("/receipts/search")
-async def get_receipts_by_title(title: str = Query(..., alias="title")) -> dict:
-    receipts = await receipt_bl.get_receipts_by_title(title)
+#search recipes by title(partial title is acceptable) endpoint
+@fast_app.get("/recipes/search")
+async def get_recipes_by_title(title: str = Query(..., alias="title")) -> dict:
+    recipes = await recipe_bl.get_recipes_by_title(title)
     
-    return {"receipts": [receipt.to_dict() for receipt in receipts]}
+    return {"recipes": [recipe.to_dict() for recipe in recipes]}
 
-#search receipts by ingredient(partial ingredient name is acceptable) endpoint
-@fast_app.get("/receipts/search/ingredient")
-async def get_receipts_by_ingredient(ing:str = Query(..., alias="ing")) -> dict:
-    receipts = await receipt_bl.get_receipts_by_ingredient(ing)
+#search recipes by ingredient(partial ingredient name is acceptable) endpoint
+@fast_app.get("/recipes/search/ingredient")
+async def get_recipes_by_ingredient(ing:str = Query(..., alias="ing")) -> dict:
+    recipes = await recipe_bl.get_recipes_by_ingredient(ing)
     
-    return {"receipts": [receipt.to_dict() for receipt in receipts]}
+    return {"recipes": [recipe.to_dict() for recipe in recipes]}
 
-#search receipts by category(partial category name is acceptable) endpoint
-@fast_app.get("/receipts/search/category")
-async def get_receipts_by_category(cat: str = Query(...,alias="cat")) -> dict:
-    receipts = await receipt_bl.get_receipts_by_category(cat)
+#search recipes by category(partial category name is acceptable) endpoint
+@fast_app.get("/recipes/search/category")
+async def get_recipes_by_category(cat: str = Query(...,alias="cat")) -> dict:
+    recipes = await recipe_bl.get_recipes_by_category(cat)
     
-    return {"receipts": [receipt.to_dict() for receipt in receipts]}
+    return {"recipes": [recipe.to_dict() for recipe in recipes]}
 
-#delete receipt of the current user endpoint
-@fast_app.delete("/users/receipts/delete")
-async def remove_receipt_from_user(
-    receipt_id: str = Query(..., alias="receipt_id"),
+#delete recipe of the current user endpoint
+@fast_app.delete("/users/recipes/delete")
+async def remove_recipe_from_user(
+    recipe_id: str = Query(..., alias="recipe_id"),
     current_user: User = Depends(auth_bl.get_current_user)
 ):
-    print(receipt_id)
+    print(recipe_id)
     try:
-        receipt_id = await convertions_bl.convert_objectid(receipt_id)
-        print(receipt_id)
+        recipe_id = await convertions_bl.convert_objectid(recipe_id)
+        print(recipe_id)
     except:
         await error_bl.error_handling(422, "Invalid ObjectID!")
     
-    receipt = await receipt_bl.get_receipt_by_id(receipt_id)
-    print(receipt.title)
-    if not receipt:
-        await error_bl.error_handling(404, "Receipt not found!")
+    recipe = await recipe_bl.get_recipe_by_id(recipe_id)
+    print(recipe.title)
+    if not recipe:
+        await error_bl.error_handling(404, "Recipe not found!")
         
-    if not receipt.author == current_user:
-        await error_bl.error_handling(403, "You dont have permission to delete this receipt!")
+    if not recipe.author == current_user:
+        await error_bl.error_handling(403, "You dont have permission to delete this recipe!")
         
-    await user_bl.remove_receipt(current_user, receipt)
+    await user_bl.remove_recipe(current_user, recipe)
 
-    return {"message": f"Receipt {receipt_id} has been removed from user {current_user.id}"}
+    return {"message": f"Recipe {recipe_id} has been removed from user {current_user.id}"}
 
-#modify receipt of the current user endpoint 
-@fast_app.put("/users/modify_receipt")
-async def modify_user_receipt(
-    request: UpdateReceiptRequest,
-    receipt_id: str = Query(..., alias="receipt_id"),
+#modify recipe of the current user endpoint 
+@fast_app.put("/users/modify_recipe")
+async def modify_user_recipe(
+    request: UpdateRecipeRequest,
+    recipe_id: str = Query(..., alias="recipe_id"),
     current_user: User = Depends(auth_bl.get_current_user)
 ):
     try:
-        receipt_id = await convertions_bl.convert_objectid(receipt_id)
+        recipe_id = await convertions_bl.convert_objectid(recipe_id)
     except:
         await error_bl.error_handling(422, "Invalid ObjectID!!")
             
-    receipt = await receipt_bl.get_receipt_by_id(receipt_id)
-    if not receipt:
-        await error_bl.error_handling(404, "Receipt not found!")
+    recipe = await recipe_bl.get_recipe_by_id(recipe_id)
+    if not recipe:
+        await error_bl.error_handling(404, "Recipe not found!")
         
-    if not receipt.author == current_user:
-        await error_bl.error_handling(403, "You dont have permission to modify this receipt!")
+    if not recipe.author == current_user:
+        await error_bl.error_handling(403, "You dont have permission to modify this recipe!")
         
-    await receipt_bl.modify_receipt(receipt ,request)
+    await recipe_bl.modify_recipe(recipe ,request)
 
-    return {"message": f"Receipt {receipt_id} has been updated for user {current_user.id}"}
+    return {"message": f"Recipe {recipe_id} has been updated for user {current_user.id}"}
 
-#add receipt to the current user's favorites endpoint
+#add recipe to the current user's favorites endpoint
 @fast_app.put("/users/add_favorite")
-async def add_favorite_receipt(
+async def add_favorite_recipe(
     user: User = Depends(auth_bl.get_current_user),
-    receipt_id: str = Query(..., alias="receipt_id")
+    recipe_id: str = Query(..., alias="recipe_id")
 ):
     try:
-        receipt_id = await convertions_bl.convert_objectid(receipt_id)
+        recipe_id = await convertions_bl.convert_objectid(recipe_id)
     except:
         await error_bl.error_handling(422, "Invalid ObjectId")
         
-    receipt = await receipt_bl.get_receipt_by_id(receipt_id)
-    if receipt is None:
-        await error_bl.error_handling(404, "Receipt not found!")
+    recipe = await recipe_bl.get_recipe_by_id(recipe_id)
+    if recipe is None:
+        await error_bl.error_handling(404, "Recipe not found!")
         
-    await user_bl.add_favorite(user, receipt)
+    await user_bl.add_favorite(user, recipe)
 
-    return {"message": f"Receipt {receipt_id} has been added to favorites for user {user.id}"}
+    return {"message": f"Recipe {recipe_id} has been added to favorites for user {user.id}"}
 
-#remove receipt from the current user's favorites endpoint
+#remove recipe from the current user's favorites endpoint
 @fast_app.put("/users/remove_favorite")
-async def remove_favorite_receipt(
+async def remove_favorite_recipe(
     user: User = Depends(auth_bl.get_current_user),
-    receipt_id: str = Query(..., alias="receipt_id")
+    recipe_id: str = Query(..., alias="recipe_id")
 ):
     try:
-        receipt_id = await convertions_bl.convert_objectid(receipt_id)
+        recipe_id = await convertions_bl.convert_objectid(recipe_id)
     except:
         await error_bl.error_handling(422, "Invalid ObjectID!")
         
-    receipt = await receipt_bl.get_receipt_by_id(receipt_id)
-    if receipt is None:
-        await error_bl.error_handling(404, "Receipt not found!")
+    recipe = await recipe_bl.get_recipe_by_id(recipe_id)
+    if recipe is None:
+        await error_bl.error_handling(404, "Recipe not found!")
 
-    await user_bl.remove_favorite(user, receipt)
+    await user_bl.remove_favorite(user, recipe)
 
-    return {"message": f"Receipt {receipt_id} has been removed from favorites for user {user.id}"}
+    return {"message": f"Recipe {recipe_id} has been removed from favorites for user {user.id}"}
 
-#get all receipts with less than a specific amount of ingredients endpoint
-@fast_app.get("/receipts/less_ingredients")
-async def get_receipts_less_ingredients(max_ingredients: int = Query(..., alias="max_ing")):
+#get all recipes with less than a specific amount of ingredients endpoint
+@fast_app.get("/recipes/less_ingredients")
+async def get_recipes_less_ingredients(max_ingredients: int = Query(..., alias="max_ing")):
 
-    receipts = await receipt_bl.get_receipts_with_less_ingredients(max_ingredients)
-    return [receipt.to_dict() for receipt in receipts]
+    recipes = await recipe_bl.get_recipes_with_less_ingredients(max_ingredients)
+    return [recipe.to_dict() for recipe in recipes]
 
-#get all receipts within the estimated time given range endpoint
-@fast_app.get("/receipts/estimated_time_range")
-async def get_receipts_estimated_time_range(min_time: int = Query(..., alias="min_time"),
+#get all recipes within the estimated time given range endpoint
+@fast_app.get("/recipes/estimated_time_range")
+async def get_recipes_estimated_time_range(min_time: int = Query(..., alias="min_time"),
                                       max_time: int = Query(..., alias="max_time")):
-    receipts = await receipt_bl.get_receipts_estimated_time_range(min_time, max_time)
+    recipes = await recipe_bl.get_recipes_estimated_time_range(min_time, max_time)
 
-    return [receipt.to_dict() for receipt in receipts]
+    return [recipe.to_dict() for recipe in recipes]
 
-#get the amount number of the current user's receipts endpoint
-@fast_app.get("/user/receipts/amount")
-async def get_num_of_receipts_of_user(current_user: User = Depends(auth_bl.get_current_user)):
-    receipts_num = await user_bl.get_receipts_amount(current_user)
+#get the amount number of the current user's recipes endpoint
+@fast_app.get("/user/recipes/amount")
+async def get_num_of_recipes_of_user(current_user: User = Depends(auth_bl.get_current_user)):
+    recipes_num = await user_bl.get_recipes_amount(current_user)
 
-    return {"username": current_user.username, "num_of_receipts": receipts_num}
+    return {"username": current_user.username, "num_of_recipes": recipes_num}
 
 #get the amount number of the current user's favorites endpoint
 @fast_app.get("/user/favorites/amount")
@@ -209,39 +209,39 @@ async def get_num_of_favorites_of_user(current_user: User = Depends(auth_bl.get_
 
     return {"username": current_user.username, "num_of_favorites": favorites_num}
 
-#get the total amount number of receipts endpoint
-@fast_app.get("/receipts/amount")
-async def get_num_of_receipts():
-    receipts_amount = await receipt_bl.get_num_of_receipts()
+#get the total amount number of recipes endpoint
+@fast_app.get("/recipes/amount")
+async def get_num_of_recipes():
+    recipes_amount = await recipe_bl.get_num_of_recipes()
 
-    return {"receipts amount": receipts_amount}
+    return {"recipes amount": recipes_amount}
 
 #get the number of categories endpoint
-@fast_app.get("/receipts/category")
+@fast_app.get("/recipes/category")
 async def get_number_of_categories():
-    categories = await receipt_bl.get_num_of_categories()
+    categories = await recipe_bl.get_num_of_categories()
 
     return {"categories amount": categories}
 
-#get the total number of distinct ingredients of all receipts
-@fast_app.get("/receipts/ingredient")
+#get the total number of distinct ingredients of all recipes
+@fast_app.get("/recipes/ingredient")
 async def get_number_of_ingredients():
 
-    num_of_distinct_ingredients = await receipt_bl.get_number_of_distinct_ingredients()
+    num_of_distinct_ingredients = await recipe_bl.get_number_of_distinct_ingredients()
 
     return {"distinct ingredients amount": num_of_distinct_ingredients}
 
-#get the average estimated time of a receipt endpoint
-@fast_app.get("/receipts/avg_time")
-async def get_avg_time_of_receipt():
-    avg_time = await receipt_bl.get_average_time_of_receipts()
+#get the average estimated time of a recipe endpoint
+@fast_app.get("/recipes/avg_time")
+async def get_avg_time_of_recipe():
+    avg_time = await recipe_bl.get_average_time_of_recipes()
 
     return {"average time": avg_time}
 
-#get the average number of ingredients of a receipt endpoint
-@fast_app.get("/receipts/avg-ingredients")
+#get the average number of ingredients of a recipes endpoint
+@fast_app.get("/recipes/avg-ingredients")
 async def avg_ingredients():
-    avg_ingredients = await receipt_bl.get_avg_ingredients_per_receipt()
+    avg_ingredients = await recipe_bl.get_avg_ingredients_per_recipe()
 
     return {"average_ingredients": avg_ingredients}
 
@@ -276,7 +276,7 @@ async def make_shop_list(cur_user: User = Depends(auth_bl.get_current_user), rec
     except:
         await error_bl.error_handling(422, "Invalid ObjectId")
     
-    receipt = await receipt_bl.get_receipt_by_id(receipt_id)
+    receipt = await recipe_bl.get_recipe_by_id(receipt_id)
     if receipt is None:
         await error_bl.error_handling(404, "Receipt not found!")
     
